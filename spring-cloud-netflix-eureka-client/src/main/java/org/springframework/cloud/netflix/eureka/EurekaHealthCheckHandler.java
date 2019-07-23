@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2017 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,8 +25,10 @@ import com.netflix.appinfo.InstanceInfo;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.actuate.health.CompositeHealthIndicator;
+import org.springframework.boot.actuate.health.DefaultHealthIndicatorRegistry;
 import org.springframework.boot.actuate.health.HealthAggregator;
 import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.actuate.health.HealthIndicatorRegistryFactory;
 import org.springframework.boot.actuate.health.Status;
 import org.springframework.cloud.client.discovery.health.DiscoveryCompositeHealthIndicator;
 import org.springframework.context.ApplicationContext;
@@ -36,62 +38,79 @@ import org.springframework.util.Assert;
 import static com.netflix.appinfo.InstanceInfo.InstanceStatus;
 
 /**
- * A Eureka health checker, maps the application status into {@link InstanceStatus}
- * that will be propagated to Eureka registry.
+ * A Eureka health checker, maps the application status into {@link InstanceStatus} that
+ * will be propagated to Eureka registry.
  *
- * On each heartbeat Eureka performs the health check invoking registered {@link HealthCheckHandler}. By default this
- * implementation will perform aggregation of all registered {@link HealthIndicator}
- * through registered {@link HealthAggregator}.
+ * On each heartbeat Eureka performs the health check invoking registered
+ * {@link HealthCheckHandler}. By default this implementation will perform aggregation of
+ * all registered {@link HealthIndicator} through registered {@link HealthAggregator}.
  *
  * @author Jakub Narloch
  * @see HealthCheckHandler
  * @see HealthAggregator
  */
-public class EurekaHealthCheckHandler implements HealthCheckHandler, ApplicationContextAware, InitializingBean {
+public class EurekaHealthCheckHandler
+		implements HealthCheckHandler, ApplicationContextAware, InitializingBean {
 
-	private static final Map<Status, InstanceInfo.InstanceStatus> STATUS_MAPPING =
-			new HashMap<Status, InstanceInfo.InstanceStatus>() {{
-				put(Status.UNKNOWN, InstanceStatus.UNKNOWN);
-				put(Status.OUT_OF_SERVICE, InstanceStatus.OUT_OF_SERVICE);
-				put(Status.DOWN, InstanceStatus.DOWN);
-				put(Status.UP, InstanceStatus.UP);
-			}};
+	private static final Map<Status, InstanceInfo.InstanceStatus> STATUS_MAPPING = new HashMap<Status, InstanceInfo.InstanceStatus>() {
+		{
+			put(Status.UNKNOWN, InstanceStatus.UNKNOWN);
+			put(Status.OUT_OF_SERVICE, InstanceStatus.OUT_OF_SERVICE);
+			put(Status.DOWN, InstanceStatus.DOWN);
+			put(Status.UP, InstanceStatus.UP);
+		}
+	};
 
-	private final CompositeHealthIndicator healthIndicator;
+	private CompositeHealthIndicator healthIndicator;
 
 	private ApplicationContext applicationContext;
 
+	private HealthIndicatorRegistryFactory healthIndicatorRegistryFactory;
+
+	private HealthAggregator healthAggregator;
+
 	public EurekaHealthCheckHandler(HealthAggregator healthAggregator) {
 		Assert.notNull(healthAggregator, "HealthAggregator must not be null");
-		this.healthIndicator = new CompositeHealthIndicator(healthAggregator);
+		this.healthAggregator = healthAggregator;
+		this.healthIndicatorRegistryFactory = new HealthIndicatorRegistryFactory();
+		this.healthIndicator = new CompositeHealthIndicator(this.healthAggregator,
+				new DefaultHealthIndicatorRegistry());
 	}
 
 	@Override
-	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+	public void setApplicationContext(ApplicationContext applicationContext)
+			throws BeansException {
 		this.applicationContext = applicationContext;
 	}
 
 	@Override
 	public void afterPropertiesSet() throws Exception {
-		final Map<String, HealthIndicator> healthIndicators = applicationContext.getBeansOfType(HealthIndicator.class);
+		final Map<String, HealthIndicator> healthIndicators = applicationContext
+				.getBeansOfType(HealthIndicator.class);
+		Map<String, HealthIndicator> finalHealthIndicators = new HashMap<>();
 
 		for (Map.Entry<String, HealthIndicator> entry : healthIndicators.entrySet()) {
 
-			//ignore EurekaHealthIndicator and flatten the rest of the composite
-			//otherwise there is a never ending cycle of down. See gh-643
+			// ignore EurekaHealthIndicator and flatten the rest of the composite
+			// otherwise there is a never ending cycle of down. See gh-643
 			if (entry.getValue() instanceof DiscoveryCompositeHealthIndicator) {
-				DiscoveryCompositeHealthIndicator indicator = (DiscoveryCompositeHealthIndicator) entry.getValue();
-				for (DiscoveryCompositeHealthIndicator.Holder holder : indicator.getHealthIndicators()) {
+				DiscoveryCompositeHealthIndicator indicator = (DiscoveryCompositeHealthIndicator) entry
+						.getValue();
+				for (DiscoveryCompositeHealthIndicator.Holder holder : indicator
+						.getHealthIndicators()) {
 					if (!(holder.getDelegate() instanceof EurekaHealthIndicator)) {
-						healthIndicator.addHealthIndicator(holder.getDelegate().getName(), holder);
+						finalHealthIndicators.put(holder.getDelegate().getName(), holder);
 					}
 				}
 
 			}
 			else {
-				healthIndicator.addHealthIndicator(entry.getKey(), entry.getValue());
+				finalHealthIndicators.put(entry.getKey(), entry.getValue());
 			}
 		}
+		this.healthIndicator = new CompositeHealthIndicator(healthAggregator,
+				healthIndicatorRegistryFactory
+						.createHealthIndicatorRegistry(finalHealthIndicators));
 	}
 
 	@Override
@@ -114,4 +133,5 @@ public class EurekaHealthCheckHandler implements HealthCheckHandler, Application
 	protected CompositeHealthIndicator getHealthIndicator() {
 		return healthIndicator;
 	}
+
 }

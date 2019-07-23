@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,11 +26,15 @@ import org.springframework.web.client.RestTemplate;
 
 /**
  * @author Spencer Gibb
+ * @author Fabrizio Di Napoli
  */
 public class LocalApplicationHealthIndicator extends AbstractHealthIndicator {
 
 	@Autowired
 	private SidecarProperties properties;
+
+	@Autowired
+	private RestTemplate restTemplate;
 
 	@SuppressWarnings("unchecked")
 	@Override
@@ -40,12 +44,13 @@ public class LocalApplicationHealthIndicator extends AbstractHealthIndicator {
 			builder.up();
 			return;
 		}
-		Map<String, Object> map = new RestTemplate().getForObject(uri, Map.class);
+
+		Map<String, Object> map = restTemplate.getForObject(uri, Map.class);
 		Object status = map.get("status");
-		if (status != null && status instanceof String) {
+		if (status instanceof String) {
 			builder.status(status.toString());
 		}
-		else if (status != null && status instanceof Map) {
+		else if (status instanceof Map) {
 			Map<String, Object> statusMap = (Map<String, Object>) status;
 			Object code = statusMap.get("code");
 			if (code != null) {

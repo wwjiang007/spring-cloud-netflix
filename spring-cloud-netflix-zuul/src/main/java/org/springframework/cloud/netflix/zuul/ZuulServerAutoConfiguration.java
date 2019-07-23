@@ -1,24 +1,34 @@
 /*
- * Copyright 2013-2018 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package org.springframework.cloud.netflix.zuul;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+
+import com.netflix.zuul.FilterLoader;
+import com.netflix.zuul.ZuulFilter;
+import com.netflix.zuul.filters.FilterRegistry;
+import com.netflix.zuul.filters.ZuulServletFilter;
+import com.netflix.zuul.http.ZuulServlet;
+import com.netflix.zuul.monitoring.CounterFactory;
+import com.netflix.zuul.monitoring.TracerFactory;
+import io.micrometer.core.instrument.MeterRegistry;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -28,6 +38,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClas
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.cloud.client.actuator.HasFeatures;
@@ -59,15 +70,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.core.Ordered;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import com.netflix.zuul.FilterLoader;
-import com.netflix.zuul.ZuulFilter;
-import com.netflix.zuul.filters.FilterRegistry;
-import com.netflix.zuul.http.ZuulServlet;
-import com.netflix.zuul.monitoring.CounterFactory;
-import com.netflix.zuul.monitoring.TracerFactory;
-
-import io.micrometer.core.instrument.MeterRegistry;
+import static java.util.Collections.emptyList;
 
 /**
  * @author Spencer Gibb
@@ -76,7 +84,7 @@ import io.micrometer.core.instrument.MeterRegistry;
  */
 @Configuration
 @EnableConfigurationProperties({ ZuulProperties.class })
-@ConditionalOnClass(ZuulServlet.class)
+@ConditionalOnClass({ ZuulServlet.class, ZuulServletFilter.class })
 @ConditionalOnBean(ZuulServerMarkerConfiguration.Marker.class)
 // Make sure to get the ServerProperties from the same place as a normal web app would
 // FIXME @Import(ServerPropertiesAutoConfiguration.class)
@@ -91,9 +99,15 @@ public class ZuulServerAutoConfiguration {
 	@Autowired(required = false)
 	private ErrorController errorController;
 
+	private Map<String, CorsConfiguration> corsConfigurations;
+
+	@Autowired(required = false)
+	private List<WebMvcConfigurer> configurers = emptyList();
+
 	@Bean
 	public HasFeatures zuulFeature() {
-		return HasFeatures.namedFeature("Zuul (Simple)", ZuulServerAutoConfiguration.class);
+		return HasFeatures.namedFeature("Zuul (Simple)",
+				ZuulServerAutoConfiguration.class);
 	}
 
 	@Bean
@@ -119,7 +133,17 @@ public class ZuulServerAutoConfiguration {
 	public ZuulHandlerMapping zuulHandlerMapping(RouteLocator routes) {
 		ZuulHandlerMapping mapping = new ZuulHandlerMapping(routes, zuulController());
 		mapping.setErrorController(this.errorController);
+		mapping.setCorsConfigurations(getCorsConfigurations());
 		return mapping;
+	}
+
+	protected final Map<String, CorsConfiguration> getCorsConfigurations() {
+		if (this.corsConfigurations == null) {
+			ZuulCorsRegistry registry = new ZuulCorsRegistry();
+			this.configurers.forEach(configurer -> configurer.addCorsMappings(registry));
+			this.corsConfigurations = registry.getCorsConfigurations();
+		}
+		return this.corsConfigurations;
 	}
 
 	@Bean
@@ -129,13 +153,31 @@ public class ZuulServerAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean(name = "zuulServlet")
+	@ConditionalOnProperty(name = "zuul.use-filter", havingValue = "false",
+			matchIfMissing = true)
 	public ServletRegistrationBean zuulServlet() {
-		ServletRegistrationBean<ZuulServlet> servlet = new ServletRegistrationBean<>(new ZuulServlet(),
-				this.zuulProperties.getServletPattern());
+		ServletRegistrationBean<ZuulServlet> servlet = new ServletRegistrationBean<>(
+				new ZuulServlet(), this.zuulProperties.getServletPattern());
 		// The whole point of exposing this servlet is to provide a route that doesn't
 		// buffer requests.
 		servlet.addInitParameter("buffer-requests", "false");
 		return servlet;
+	}
+
+	@Bean
+	@ConditionalOnMissingBean(name = "zuulServletFilter")
+	@ConditionalOnProperty(name = "zuul.use-filter", havingValue = "true",
+			matchIfMissing = false)
+	public FilterRegistrationBean zuulServletFilter() {
+		final FilterRegistrationBean<ZuulServletFilter> filterRegistration = new FilterRegistrationBean<>();
+		filterRegistration.setUrlPatterns(
+				Collections.singleton(this.zuulProperties.getServletPattern()));
+		filterRegistration.setFilter(new ZuulServletFilter());
+		filterRegistration.setOrder(Ordered.LOWEST_PRECEDENCE);
+		// The whole point of exposing this servlet is to provide a route that doesn't
+		// buffer requests.
+		filterRegistration.addInitParameter("buffer-requests", "false");
+		return filterRegistration;
 	}
 
 	// pre filters
@@ -178,7 +220,7 @@ public class ZuulServerAutoConfiguration {
 	}
 
 	@Bean
-	@ConditionalOnProperty(value = "zuul.ribbon.eager-load.enabled")
+	@ConditionalOnProperty("zuul.ribbon.eager-load.enabled")
 	public ZuulRouteApplicationContextInitializer zuulRoutesApplicationContextInitiazer(
 			SpringClientFactory springClientFactory) {
 		return new ZuulRouteApplicationContextInitializer(springClientFactory,
@@ -192,11 +234,12 @@ public class ZuulServerAutoConfiguration {
 		private Map<String, ZuulFilter> filters;
 
 		@Bean
-		public ZuulFilterInitializer zuulFilterInitializer(
-				CounterFactory counterFactory, TracerFactory tracerFactory) {
+		public ZuulFilterInitializer zuulFilterInitializer(CounterFactory counterFactory,
+				TracerFactory tracerFactory) {
 			FilterLoader filterLoader = FilterLoader.getInstance();
 			FilterRegistry filterRegistry = FilterRegistry.instance();
-			return new ZuulFilterInitializer(this.filters, counterFactory, tracerFactory, filterLoader, filterRegistry);
+			return new ZuulFilterInitializer(this.filters, counterFactory, tracerFactory,
+					filterLoader, filterRegistry);
 		}
 
 	}
@@ -211,6 +254,7 @@ public class ZuulServerAutoConfiguration {
 		public CounterFactory counterFactory(MeterRegistry meterRegistry) {
 			return new DefaultCounterFactory(meterRegistry);
 		}
+
 	}
 
 	@Configuration
@@ -266,5 +310,16 @@ public class ZuulServerAutoConfiguration {
 		private void reset() {
 			this.zuulHandlerMapping.setDirty(true);
 		}
+
 	}
+
+	private static class ZuulCorsRegistry extends CorsRegistry {
+
+		@Override
+		protected Map<String, CorsConfiguration> getCorsConfigurations() {
+			return super.getCorsConfigurations();
+		}
+
+	}
+
 }

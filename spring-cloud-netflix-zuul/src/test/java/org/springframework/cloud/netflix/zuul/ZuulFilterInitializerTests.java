@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2017 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,51 +21,68 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Test;
-import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.util.ReflectionUtils;
-
 import com.netflix.zuul.FilterLoader;
 import com.netflix.zuul.ZuulFilter;
 import com.netflix.zuul.filters.FilterRegistry;
 import com.netflix.zuul.monitoring.CounterFactory;
 import com.netflix.zuul.monitoring.TracerFactory;
+import org.junit.Before;
+import org.junit.Test;
+
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.util.ReflectionUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 public class ZuulFilterInitializerTests {
 
-	private Map<String, ZuulFilter> filters = getFilters();
-	private CounterFactory counterFactory = mock(CounterFactory.class);
-	private TracerFactory tracerFactory = mock(TracerFactory.class);
-	private FilterLoader filterLoader = new FilterLoader();
-	private FilterRegistry filterRegistry = getFilterRegistry();
+	private Map<String, ZuulFilter> filters;
 
-	private final ZuulFilterInitializer initializer = new ZuulFilterInitializer(filters,
-			counterFactory, tracerFactory, filterLoader, filterRegistry);
+	private CounterFactory counterFactory;
 
-	@Test
-	public void shouldSetupOnContextInitializedEvent() throws Exception {
+	private TracerFactory tracerFactory;
+
+	private FilterLoader filterLoader;
+
+	private FilterRegistry filterRegistry;
+
+	private ZuulFilterInitializer initializer;
+
+	@Before
+	public void init() {
+		filters = getFilters();
+		counterFactory = mock(CounterFactory.class);
+		tracerFactory = mock(TracerFactory.class);
+		filterLoader = new FilterLoader();
+		filterRegistry = getFilterRegistry();
+		initializer = new ZuulFilterInitializer(filters, counterFactory, tracerFactory,
+				filterLoader, filterRegistry);
+
 		initializer.contextInitialized();
-
-		assertEquals(tracerFactory, TracerFactory.instance());
-		assertEquals(counterFactory, CounterFactory.instance());
-		assertThat(filterRegistry.getAllFilters())
-				.containsAll(filters.values());
 	}
 
 	@Test
-	public void shouldCleanupOnContextDestroyed() throws Exception {
+	public void shouldSetupOnContextInitializedEvent() {
+
+		assertThat(TracerFactory.instance()).isEqualTo(tracerFactory);
+		assertThat(CounterFactory.instance()).isEqualTo(counterFactory);
+		assertThat(filterRegistry.getAllFilters()).containsAll(filters.values());
+
+		initializer.contextDestroyed();
+	}
+
+	@Test
+	public void shouldCleanupOnContextDestroyed() {
+
 		initializer.contextDestroyed();
 
-		assertEquals(null, ReflectionTestUtils.getField(TracerFactory.class, "INSTANCE"));
-		assertEquals(null,
-				ReflectionTestUtils.getField(CounterFactory.class, "INSTANCE"));
-		assertTrue(FilterRegistry.instance().getAllFilters().isEmpty());
-		assertTrue(getHashFiltersByType().isEmpty());
+		assertThat(ReflectionTestUtils.getField(TracerFactory.class, "INSTANCE"))
+				.isNull();
+		assertThat(ReflectionTestUtils.getField(CounterFactory.class, "INSTANCE"))
+				.isNull();
+		assertThat(filterRegistry.getAllFilters()).isEmpty();
+		assertThat(getHashFiltersByType().isEmpty()).isTrue();
 	}
 
 	private Map getHashFiltersByType() {
@@ -92,4 +109,5 @@ public class ZuulFilterInitializerTests {
 			throw new RuntimeException(e);
 		}
 	}
+
 }

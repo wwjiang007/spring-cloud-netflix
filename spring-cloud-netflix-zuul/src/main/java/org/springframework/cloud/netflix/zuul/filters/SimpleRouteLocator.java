@@ -1,18 +1,17 @@
 /*
- * Copyright 2013-2018 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package org.springframework.cloud.netflix.zuul.filters;
@@ -24,8 +23,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.springframework.cloud.netflix.zuul.filters.ZuulProperties.ZuulRoute;
 import org.springframework.cloud.netflix.zuul.util.RequestUtils;
 import org.springframework.core.Ordered;
@@ -49,9 +50,11 @@ public class SimpleRouteLocator implements RouteLocator, Ordered {
 	private PathMatcher pathMatcher = new AntPathMatcher();
 
 	private String dispatcherServletPath = "/";
+
 	private String zuulServletPath;
 
 	private AtomicReference<Map<String, ZuulRoute>> routes = new AtomicReference<>();
+
 	private int order = DEFAULT_ORDER;
 
 	public SimpleRouteLocator(String servletPath, ZuulProperties properties) {
@@ -69,7 +72,19 @@ public class SimpleRouteLocator implements RouteLocator, Ordered {
 		for (Entry<String, ZuulRoute> entry : getRoutesMap().entrySet()) {
 			ZuulRoute route = entry.getValue();
 			String path = route.getPath();
-			values.add(getRoute(route, path));
+			try {
+				values.add(getRoute(route, path));
+			}
+			catch (Exception e) {
+				if (log.isWarnEnabled()) {
+					log.warn("Invalid route, routeId: " + route.getId()
+							+ ", routeServiceId: " + route.getServiceId() + ", msg: "
+							+ e.getMessage());
+				}
+				if (log.isDebugEnabled()) {
+					log.debug("", e);
+				}
+			}
 		}
 		return values;
 	}
@@ -139,7 +154,7 @@ public class SimpleRouteLocator implements RouteLocator, Ordered {
 		}
 		String targetPath = path;
 		String prefix = this.properties.getPrefix();
-		if(prefix.endsWith("/")) {
+		if (prefix.endsWith("/")) {
 			prefix = prefix.substring(0, prefix.length() - 1);
 		}
 		if (path.startsWith(prefix + "/") && this.properties.isStripPrefix()) {
@@ -159,7 +174,7 @@ public class SimpleRouteLocator implements RouteLocator, Ordered {
 		}
 		return new Route(route.getId(), targetPath, route.getLocation(), prefix,
 				retryable,
-				route.isCustomSensitiveHeaders() ? route.getSensitiveHeaders() : null, 
+				route.isCustomSensitiveHeaders() ? route.getSensitiveHeaders() : null,
 				route.isStripPrefix());
 	}
 
@@ -174,6 +189,7 @@ public class SimpleRouteLocator implements RouteLocator, Ordered {
 	/**
 	 * Compute a map of path pattern to route. The default is just a static map from the
 	 * {@link ZuulProperties}, but subclasses can add dynamic calculations.
+	 * @return map of Zuul routes
 	 */
 	protected Map<String, ZuulRoute> locateRoutes() {
 		LinkedHashMap<String, ZuulRoute> routesMap = new LinkedHashMap<>();
@@ -199,7 +215,8 @@ public class SimpleRouteLocator implements RouteLocator, Ordered {
 
 		if (RequestUtils.isDispatcherServletRequest()
 				&& StringUtils.hasText(this.dispatcherServletPath)) {
-			if (!this.dispatcherServletPath.equals("/") && path.startsWith(this.dispatcherServletPath)) {
+			if (!this.dispatcherServletPath.equals("/")
+					&& path.startsWith(this.dispatcherServletPath)) {
 				adjustedPath = path.substring(this.dispatcherServletPath.length());
 				log.debug("Stripped dispatcherServletPath");
 			}
@@ -223,7 +240,7 @@ public class SimpleRouteLocator implements RouteLocator, Ordered {
 	public int getOrder() {
 		return order;
 	}
-	
+
 	public void setOrder(int order) {
 		this.order = order;
 	}

@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2014 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,9 +31,14 @@ import org.springframework.context.annotation.Import;
  * @author Dave Syer
  */
 @ConditionalOnClass(ConfigServicePropertySourceLocator.class)
-@ConditionalOnProperty(value = "spring.cloud.config.discovery.enabled", matchIfMissing = false)
+@ConditionalOnProperty(value = "spring.cloud.config.discovery.enabled",
+		matchIfMissing = false)
 @Configuration
-@Import({ EurekaDiscoveryClientConfiguration.class, // this emulates @EnableDiscoveryClient, the import selector doesn't run before the bootstrap phase
+@Import({ EurekaDiscoveryClientConfiguration.class, // this emulates
+		// @EnableDiscoveryClient, the import
+		// selector doesn't run before the
+		// bootstrap phase
 		EurekaClientAutoConfiguration.class })
 public class EurekaDiscoveryClientConfigServiceBootstrapConfiguration {
+
 }

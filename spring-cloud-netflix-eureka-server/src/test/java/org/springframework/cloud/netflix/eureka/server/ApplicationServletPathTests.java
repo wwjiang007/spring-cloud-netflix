@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 the original author or authors.
+ * Copyright 2013-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,10 +42,8 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = Application.class, webEnvironment = RANDOM_PORT,
-		properties = { "spring.application.name=eureka",
-				"server.servlet.context-path=/servlet",
-				"management.security.enabled=false",
-				"management.endpoints.web.exposure.include=*" })
+		properties = { "spring.application.name=eureka", "server.servlet.context-path=/servlet",
+				"management.security.enabled=false", "management.endpoints.web.exposure.include=*" })
 public class ApplicationServletPathTests {
 
 	private static final String BASE_PATH = new WebEndpointProperties().getBasePath();
@@ -56,38 +54,35 @@ public class ApplicationServletPathTests {
 	@Test
 	public void catalogLoads() {
 		@SuppressWarnings("rawtypes")
-		ResponseEntity<Map> entity = new TestRestTemplate().getForEntity(
-				"http://localhost:" + this.port + "/servlet/eureka/apps", Map.class);
+		ResponseEntity<Map> entity = new TestRestTemplate()
+				.getForEntity("http://localhost:" + this.port + "/servlet/eureka/apps", Map.class);
 		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 
 	@Test
 	public void dashboardLoads() {
-		ResponseEntity<String> entity = new TestRestTemplate().getForEntity(
-				"http://localhost:" + this.port + "/servlet/", String.class);
+		ResponseEntity<String> entity = new TestRestTemplate()
+				.getForEntity("http://localhost:" + this.port + "/servlet/", String.class);
 		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
 		String body = entity.getBody();
 		// System.err.println(body);
 		assertThat(body.contains("eureka/js")).isTrue();
 		assertThat(body.contains("eureka/css")).isTrue();
 		// The "DS Replicas"
-		assertThat(body.contains("<h1>Instances currently registered with Eureka</h1>"))
-				.isTrue();
+		assertThat(body.contains("<h1>Instances currently registered with Eureka</h1>")).isTrue();
 	}
 
 	@Test
 	public void cssAvailable() {
-		ResponseEntity<String> entity = new TestRestTemplate().getForEntity(
-				"http://localhost:" + this.port + "/servlet/eureka/css/wro.css",
-				String.class);
+		ResponseEntity<String> entity = new TestRestTemplate()
+				.getForEntity("http://localhost:" + this.port + "/servlet/eureka/css/wro.css", String.class);
 		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 
 	@Test
 	public void jsAvailable() {
-		ResponseEntity<String> entity = new TestRestTemplate().getForEntity(
-				"http://localhost:" + this.port + "/servlet/eureka/js/wro.js",
-				String.class);
+		ResponseEntity<String> entity = new TestRestTemplate()
+				.getForEntity("http://localhost:" + this.port + "/servlet/eureka/js/wro.js", String.class);
 		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 
@@ -98,12 +93,12 @@ public class ApplicationServletPathTests {
 
 		@SuppressWarnings("rawtypes")
 		ResponseEntity<Map> entity = new TestRestTemplate().exchange(
-				"http://localhost:" + this.port + "/servlet" + BASE_PATH + "/env",
-				HttpMethod.GET, new HttpEntity<>("parameters", headers), Map.class);
+				"http://localhost:" + this.port + "/servlet" + BASE_PATH + "/env", HttpMethod.GET,
+				new HttpEntity<>("parameters", headers), Map.class);
 		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableAutoConfiguration
 	@EnableEurekaServer
 	protected static class Application {

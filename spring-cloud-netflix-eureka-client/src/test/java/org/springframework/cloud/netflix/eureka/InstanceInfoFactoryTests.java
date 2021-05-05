@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 the original author or authors.
+ * Copyright 2013-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,8 +40,7 @@ public class InstanceInfoFactoryTests {
 	public void instanceIdIsHostNameByDefault() throws IOException {
 		InstanceInfo instanceInfo = setupInstance();
 		try (InetUtils utils = new InetUtils(new InetUtilsProperties())) {
-			assertThat(instanceInfo.getId())
-					.isEqualTo(utils.findFirstNonLoopbackHostInfo().getHostname());
+			assertThat(instanceInfo.getId()).isEqualTo(utils.findFirstNonLoopbackHostInfo().getHostname());
 		}
 	}
 
@@ -60,8 +59,7 @@ public class InstanceInfoFactoryTests {
 	private InstanceInfo setupInstance(String... pairs) {
 		TestPropertyValues.of(pairs).applyTo(this.context);
 
-		this.context.register(PropertyPlaceholderAutoConfiguration.class,
-				TestConfiguration.class);
+		this.context.register(PropertyPlaceholderAutoConfiguration.class, TestConfiguration.class);
 		this.context.refresh();
 
 		EurekaInstanceConfigBean instanceConfig = getInstanceConfig();
@@ -72,7 +70,7 @@ public class InstanceInfoFactoryTests {
 		return this.context.getBean(EurekaInstanceConfigBean.class);
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableConfigurationProperties
 	protected static class TestConfiguration {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,9 +74,8 @@ public class EurekaControllerReplicasTests {
 	@Test
 	public void testFilterReplicasNoAuth() throws Exception {
 		Map<String, Object> model = new HashMap<>();
-		StatusInfo statusInfo = StatusInfo.Builder.newBuilder()
-				.add("registered-replicas", empty).add("available-replicas", noAuthList1)
-				.add("unavailable-replicas", noAuthList2)
+		StatusInfo statusInfo = StatusInfo.Builder.newBuilder().add("registered-replicas", empty)
+				.add("available-replicas", noAuthList1).add("unavailable-replicas", noAuthList2)
 				.withInstanceInfo(this.instanceInfo).build();
 		EurekaController controller = new EurekaController(null);
 
@@ -93,10 +92,9 @@ public class EurekaControllerReplicasTests {
 	@Test
 	public void testFilterReplicasAuth() throws Exception {
 		Map<String, Object> model = new HashMap<>();
-		StatusInfo statusInfo = StatusInfo.Builder.newBuilder()
-				.add("registered-replicas", authList2)
-				.add("available-replicas", authList1).add("unavailable-replicas", empty)
-				.withInstanceInfo(instanceInfo).build();
+		StatusInfo statusInfo = StatusInfo.Builder.newBuilder().add("registered-replicas", authList2)
+				.add("available-replicas", authList1).add("unavailable-replicas", empty).withInstanceInfo(instanceInfo)
+				.build();
 		EurekaController controller = new EurekaController(null);
 
 		controller.filterReplicas(model, statusInfo);
@@ -112,10 +110,8 @@ public class EurekaControllerReplicasTests {
 	@Test
 	public void testFilterReplicasAuthWithCombinationList() throws Exception {
 		Map<String, Object> model = new HashMap<>();
-		StatusInfo statusInfo = StatusInfo.Builder.newBuilder()
-				.add("registered-replicas", totalAutoList)
-				.add("available-replicas", combinationAuthList1)
-				.add("unavailable-replicas", combinationAuthList2)
+		StatusInfo statusInfo = StatusInfo.Builder.newBuilder().add("registered-replicas", totalAutoList)
+				.add("available-replicas", combinationAuthList1).add("unavailable-replicas", combinationAuthList2)
 				.withInstanceInfo(instanceInfo).build();
 		EurekaController controller = new EurekaController(null);
 

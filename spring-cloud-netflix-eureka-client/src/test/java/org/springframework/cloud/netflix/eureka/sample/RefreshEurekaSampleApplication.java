@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,10 @@ package org.springframework.cloud.netflix.eureka.sample;
 
 import com.netflix.discovery.EurekaClient;
 
+import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.cloud.netflix.eureka.CloudEurekaClient;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.RestController;
 
 import static org.mockito.Mockito.mock;
@@ -30,8 +29,7 @@ import static org.mockito.Mockito.mock;
 /**
  * @author Ryan Baxter
  */
-@Configuration
-@ComponentScan
+@SpringBootConfiguration(proxyBeanMethods = false)
 @EnableAutoConfiguration
 @RestController
 public class RefreshEurekaSampleApplication {

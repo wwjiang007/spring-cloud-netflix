@@ -1,10 +1,10 @@
-#!/bin/bash -x
+ALLOW#!/bin/bash -x
 
 set -e
 
 # Set default props like MAVEN_PATH, ROOT_FOLDER etc.
 function set_default_props() {
-    # The script should be executed from the root folder
+    # The script should be run from the root folder
     ROOT_FOLDER=`pwd`
     echo "Current folder is ${ROOT_FOLDER}"
 
@@ -39,7 +39,7 @@ function check_if_anything_to_sync() {
 }
 
 function retrieve_current_branch() {
-    # Code getting the name of the current branch. For master we want to publish as we did until now
+    # Code getting the name of the current branch. For main we want to publish as we did until now
     # https://stackoverflow.com/questions/1593051/how-to-programmatically-determine-the-current-checked-out-git-branch
     # If there is a branch already passed will reuse it - otherwise will try to find it
     CURRENT_BRANCH=${BRANCH}
@@ -65,7 +65,7 @@ function build_docs_if_applicable() {
 }
 
 # Get the name of the `docs.main` property
-# Get whitelisted branches - assumes that a `docs` module is available under `docs` profile
+# Get allow branches - assumes that a `docs` module is available under `docs` profile
 function retrieve_doc_properties() {
     MAIN_ADOC_VALUE=$("${MAVEN_PATH}"mvn -q \
         -Dexec.executable="echo" \
@@ -75,14 +75,14 @@ function retrieve_doc_properties() {
     echo "Extracted 'main.adoc' from Maven build [${MAIN_ADOC_VALUE}]"
 
 
-    WHITELIST_PROPERTY=${WHITELIST_PROPERTY:-"docs.whitelisted.branches"}
-    WHITELISTED_BRANCHES_VALUE=$("${MAVEN_PATH}"mvn -q \
+    ALLOW_PROPERTY=${ALLOW_PROPERTY:-"docs.allowed.branches"}
+    ALLOWED_BRANCHES_VALUE=$("${MAVEN_PATH}"mvn -q \
         -Dexec.executable="echo" \
-        -Dexec.args="\${${WHITELIST_PROPERTY}}" \
+        -Dexec.args="\${${ALLOW_PROPERTY}}" \
         org.codehaus.mojo:exec-maven-plugin:1.3.1:exec \
         -P docs \
         -pl docs)
-    echo "Extracted '${WHITELIST_PROPERTY}' from Maven build [${WHITELISTED_BRANCHES_VALUE}]"
+    echo "Extracted '${ALLOW_PROPERTY}' from Maven build [${ALLOWED_BRANCHES_VALUE}]"
 }
 
 # Stash any outstanding changes
@@ -134,8 +134,8 @@ function add_docs_from_target() {
 
 # Copies the docs by using the retrieved properties from Maven build
 function copy_docs_for_current_version() {
-    if [[ "${CURRENT_BRANCH}" == "master" ]] ; then
-        echo -e "Current branch is master - will copy the current docs only to the root folder"
+    if [[ "${CURRENT_BRANCH}" == "main" ]] ; then
+        echo -e "Current branch is main - will copy the current docs only to the root folder"
         for f in docs/target/generated-docs/*; do
             file=${f#docs/target/generated-docs/*}
             if ! git ls-files -i -o --exclude-standard --directory | grep -q ^$file$; then
@@ -148,9 +148,9 @@ function copy_docs_for_current_version() {
     else
         echo -e "Current branch is [${CURRENT_BRANCH}]"
         # https://stackoverflow.com/questions/29300806/a-bash-script-to-check-if-a-string-is-present-in-a-comma-separated-list-of-strin
-        if [[ ",${WHITELISTED_BRANCHES_VALUE}," = *",${CURRENT_BRANCH},"* ]] ; then
+        if [[ ",${ALLOWED_BRANCHES_VALUE}," = *",${CURRENT_BRANCH},"* ]] ; then
             mkdir -p ${ROOT_FOLDER}/${CURRENT_BRANCH}
-            echo -e "Branch [${CURRENT_BRANCH}] is whitelisted! Will copy the current docs to the [${CURRENT_BRANCH}] folder"
+            echo -e "Branch [${CURRENT_BRANCH}] is allowed! Will copy the current docs to the [${CURRENT_BRANCH}] folder"
             for f in docs/target/generated-docs/*; do
                 file=${f#docs/target/generated-docs/*}
                 if ! git ls-files -i -o --exclude-standard --directory | grep -q ^$file$; then
@@ -169,7 +169,7 @@ function copy_docs_for_current_version() {
             done
             COMMIT_CHANGES="yes"
         else
-            echo -e "Branch [${CURRENT_BRANCH}] is not on the white list! Check out the Maven [${WHITELIST_PROPERTY}] property in
+            echo -e "Branch [${CURRENT_BRANCH}] is not on the allow list! Check out the Maven [${ALLOW_PROPERTY}] property in
              [docs] module available under [docs] profile. Won't commit any changes to gh-pages for this branch."
         fi
     fi
@@ -216,7 +216,7 @@ function commit_changes_if_applicable() {
         git commit -a -m "Sync docs from ${CURRENT_BRANCH} to gh-pages" && COMMIT_SUCCESSFUL="yes" || echo "Failed to commit changes"
 
         # Uncomment the following push if you want to auto push to
-        # the gh-pages branch whenever you commit to master locally.
+        # the gh-pages branch whenever you commit to main locally.
         # This is a little extreme. Use with care!
         ###################################################################
         if [[ "${COMMIT_SUCCESSFUL}" == "yes" ]] ; then
@@ -249,11 +249,11 @@ The idea of this script is to update gh-pages branch with the generated docs. Wi
 the script will work in the following manner:
 
 - if there's no gh-pages / target for docs module then the script ends
-- for master branch the generated docs are copied to the root of gh-pages branch
-- for any other branch (if that branch is whitelisted) a subfolder with branch name is created
+- for main branch the generated docs are copied to the root of gh-pages branch
+- for any other branch (if that branch is allowed) a subfolder with branch name is created
     and docs are copied there
 - if the version switch is passed (-v) then a tag with (v) prefix will be retrieved and a folder
-    with that version number will be created in the gh-pages branch. WARNING! No whitelist verification will take place
+    with that version number will be created in the gh-pages branch. WARNING! No allow verification will take place
 - if the destination switch is passed (-d) then the script will check if the provided dir is a git repo and then will
     switch to gh-pages of that repo and copy the generated docs to `docs/<project-name>/<version>`
 - if the destination switch is passed (-d) then the script will check if the provided dir is a git repo and then will

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 the original author or authors.
+ * Copyright 2013-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,19 +74,17 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * @author Biju Kunjummen
  * @author Fahim Farook
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @Import(EurekaServerInitializerConfiguration.class)
 @ConditionalOnBean(EurekaServerMarkerConfiguration.Marker.class)
-@EnableConfigurationProperties({ EurekaDashboardProperties.class,
-		InstanceRegistryProperties.class })
+@EnableConfigurationProperties({ EurekaDashboardProperties.class, InstanceRegistryProperties.class })
 @PropertySource("classpath:/eureka/server.properties")
 public class EurekaServerAutoConfiguration implements WebMvcConfigurer {
 
 	/**
 	 * List of packages containing Jersey resources required by the Eureka server.
 	 */
-	private static final String[] EUREKA_PACKAGES = new String[] {
-			"com.netflix.discovery", "com.netflix.eureka" };
+	private static final String[] EUREKA_PACKAGES = new String[] { "com.netflix.discovery", "com.netflix.eureka" };
 
 	@Autowired
 	private ApplicationInfoManager applicationInfoManager;
@@ -110,13 +108,11 @@ public class EurekaServerAutoConfiguration implements WebMvcConfigurer {
 
 	@Bean
 	public HasFeatures eurekaServerFeature() {
-		return HasFeatures.namedFeature("Eureka Server",
-				EurekaServerAutoConfiguration.class);
+		return HasFeatures.namedFeature("Eureka Server", EurekaServerAutoConfiguration.class);
 	}
 
 	@Bean
-	@ConditionalOnProperty(prefix = "eureka.dashboard", name = "enabled",
-			matchIfMissing = true)
+	@ConditionalOnProperty(prefix = "eureka.dashboard", name = "enabled", matchIfMissing = true)
 	public EurekaController eurekaController() {
 		return new EurekaController(this.applicationInfoManager);
 	}
@@ -138,8 +134,7 @@ public class EurekaServerAutoConfiguration implements WebMvcConfigurer {
 
 	private static CodecWrapper getFullXml(EurekaServerConfig serverConfig) {
 		CodecWrapper codec = CodecWrappers.getCodec(serverConfig.getXmlCodecName());
-		return codec == null ? CodecWrappers.getCodec(CodecWrappers.XStreamXml.class)
-				: codec;
+		return codec == null ? CodecWrappers.getCodec(CodecWrappers.XStreamXml.class) : codec;
 	}
 
 	@Bean
@@ -149,38 +144,34 @@ public class EurekaServerAutoConfiguration implements WebMvcConfigurer {
 	}
 
 	@Bean
-	public PeerAwareInstanceRegistry peerAwareInstanceRegistry(
-			ServerCodecs serverCodecs) {
+	public PeerAwareInstanceRegistry peerAwareInstanceRegistry(ServerCodecs serverCodecs) {
 		this.eurekaClient.getApplications(); // force initialization
-		return new InstanceRegistry(this.eurekaServerConfig, this.eurekaClientConfig,
-				serverCodecs, this.eurekaClient,
+		return new InstanceRegistry(this.eurekaServerConfig, this.eurekaClientConfig, serverCodecs, this.eurekaClient,
 				this.instanceRegistryProperties.getExpectedNumberOfClientsSendingRenews(),
 				this.instanceRegistryProperties.getDefaultOpenForTrafficCount());
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
-	public PeerEurekaNodes peerEurekaNodes(PeerAwareInstanceRegistry registry,
-			ServerCodecs serverCodecs,
+	public PeerEurekaNodes peerEurekaNodes(PeerAwareInstanceRegistry registry, ServerCodecs serverCodecs,
 			ReplicationClientAdditionalFilters replicationClientAdditionalFilters) {
-		return new RefreshablePeerEurekaNodes(registry, this.eurekaServerConfig,
-				this.eurekaClientConfig, serverCodecs, this.applicationInfoManager,
-				replicationClientAdditionalFilters);
+		return new RefreshablePeerEurekaNodes(registry, this.eurekaServerConfig, this.eurekaClientConfig, serverCodecs,
+				this.applicationInfoManager, replicationClientAdditionalFilters);
 	}
 
 	@Bean
-	public EurekaServerContext eurekaServerContext(ServerCodecs serverCodecs,
-			PeerAwareInstanceRegistry registry, PeerEurekaNodes peerEurekaNodes) {
-		return new DefaultEurekaServerContext(this.eurekaServerConfig, serverCodecs,
-				registry, peerEurekaNodes, this.applicationInfoManager);
+	@ConditionalOnMissingBean
+	public EurekaServerContext eurekaServerContext(ServerCodecs serverCodecs, PeerAwareInstanceRegistry registry,
+			PeerEurekaNodes peerEurekaNodes) {
+		return new DefaultEurekaServerContext(this.eurekaServerConfig, serverCodecs, registry, peerEurekaNodes,
+				this.applicationInfoManager);
 	}
 
 	@Bean
 	public EurekaServerBootstrap eurekaServerBootstrap(PeerAwareInstanceRegistry registry,
 			EurekaServerContext serverContext) {
-		return new EurekaServerBootstrap(this.applicationInfoManager,
-				this.eurekaClientConfig, this.eurekaServerConfig, registry,
-				serverContext);
+		return new EurekaServerBootstrap(this.applicationInfoManager, this.eurekaClientConfig, this.eurekaServerConfig,
+				registry, serverContext);
 	}
 
 	/**
@@ -189,13 +180,11 @@ public class EurekaServerAutoConfiguration implements WebMvcConfigurer {
 	 * @return a jersey {@link FilterRegistrationBean}
 	 */
 	@Bean
-	public FilterRegistrationBean<?> jerseyFilterRegistration(
-			javax.ws.rs.core.Application eurekaJerseyApp) {
+	public FilterRegistrationBean<?> jerseyFilterRegistration(javax.ws.rs.core.Application eurekaJerseyApp) {
 		FilterRegistrationBean<Filter> bean = new FilterRegistrationBean<Filter>();
 		bean.setFilter(new ServletContainer(eurekaJerseyApp));
 		bean.setOrder(Ordered.LOWEST_PRECEDENCE);
-		bean.setUrlPatterns(
-				Collections.singletonList(EurekaConstants.DEFAULT_PREFIX + "/*"));
+		bean.setUrlPatterns(Collections.singletonList(EurekaConstants.DEFAULT_PREFIX + "/*"));
 
 		return bean;
 	}
@@ -208,11 +197,10 @@ public class EurekaServerAutoConfiguration implements WebMvcConfigurer {
 	 * @return created {@link Application} object
 	 */
 	@Bean
-	public javax.ws.rs.core.Application jerseyApplication(Environment environment,
-			ResourceLoader resourceLoader) {
+	public javax.ws.rs.core.Application jerseyApplication(Environment environment, ResourceLoader resourceLoader) {
 
-		ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(
-				false, environment);
+		ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false,
+				environment);
 
 		// Filter to include only classes that have a particular annotation.
 		//
@@ -225,8 +213,7 @@ public class EurekaServerAutoConfiguration implements WebMvcConfigurer {
 		for (String basePackage : EUREKA_PACKAGES) {
 			Set<BeanDefinition> beans = provider.findCandidateComponents(basePackage);
 			for (BeanDefinition bd : beans) {
-				Class<?> cls = ClassUtils.resolveClassName(bd.getBeanClassName(),
-						resourceLoader.getClassLoader());
+				Class<?> cls = ClassUtils.resolveClassName(bd.getBeanClassName(), resourceLoader.getClassLoader());
 				classes.add(cls);
 			}
 		}
@@ -246,15 +233,14 @@ public class EurekaServerAutoConfiguration implements WebMvcConfigurer {
 
 	@Bean
 	@ConditionalOnBean(name = "httpTraceFilter")
-	public FilterRegistrationBean<?> traceFilterRegistration(
-			@Qualifier("httpTraceFilter") Filter filter) {
+	public FilterRegistrationBean<?> traceFilterRegistration(@Qualifier("httpTraceFilter") Filter filter) {
 		FilterRegistrationBean<Filter> bean = new FilterRegistrationBean<Filter>();
 		bean.setFilter(filter);
 		bean.setOrder(Ordered.LOWEST_PRECEDENCE - 10);
 		return bean;
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	protected static class EurekaServerConfigBeanConfiguration {
 
 		@Bean
@@ -287,31 +273,26 @@ public class EurekaServerAutoConfiguration implements WebMvcConfigurer {
 
 		private ReplicationClientAdditionalFilters replicationClientAdditionalFilters;
 
-		RefreshablePeerEurekaNodes(final PeerAwareInstanceRegistry registry,
-				final EurekaServerConfig serverConfig,
+		RefreshablePeerEurekaNodes(final PeerAwareInstanceRegistry registry, final EurekaServerConfig serverConfig,
 				final EurekaClientConfig clientConfig, final ServerCodecs serverCodecs,
 				final ApplicationInfoManager applicationInfoManager,
 				final ReplicationClientAdditionalFilters replicationClientAdditionalFilters) {
-			super(registry, serverConfig, clientConfig, serverCodecs,
-					applicationInfoManager);
+			super(registry, serverConfig, clientConfig, serverCodecs, applicationInfoManager);
 			this.replicationClientAdditionalFilters = replicationClientAdditionalFilters;
 		}
 
 		@Override
 		protected PeerEurekaNode createPeerEurekaNode(String peerEurekaNodeUrl) {
-			JerseyReplicationClient replicationClient = JerseyReplicationClient
-					.createReplicationClient(serverConfig, serverCodecs,
-							peerEurekaNodeUrl);
+			JerseyReplicationClient replicationClient = JerseyReplicationClient.createReplicationClient(serverConfig,
+					serverCodecs, peerEurekaNodeUrl);
 
-			this.replicationClientAdditionalFilters.getFilters()
-					.forEach(replicationClient::addReplicationClientFilter);
+			this.replicationClientAdditionalFilters.getFilters().forEach(replicationClient::addReplicationClientFilter);
 
 			String targetHost = hostFromUrl(peerEurekaNodeUrl);
 			if (targetHost == null) {
 				targetHost = "host";
 			}
-			return new PeerEurekaNode(registry, targetHost, peerEurekaNodeUrl,
-					replicationClient, serverConfig);
+			return new PeerEurekaNode(registry, targetHost, peerEurekaNodeUrl, replicationClient, serverConfig);
 		}
 
 		@Override
@@ -352,10 +333,8 @@ public class EurekaServerAutoConfiguration implements WebMvcConfigurer {
 	class CloudServerCodecs extends DefaultServerCodecs {
 
 		CloudServerCodecs(EurekaServerConfig serverConfig) {
-			super(getFullJson(serverConfig),
-					CodecWrappers.getCodec(CodecWrappers.JacksonJsonMini.class),
-					getFullXml(serverConfig),
-					CodecWrappers.getCodec(CodecWrappers.JacksonXmlMini.class));
+			super(getFullJson(serverConfig), CodecWrappers.getCodec(CodecWrappers.JacksonJsonMini.class),
+					getFullXml(serverConfig), CodecWrappers.getCodec(CodecWrappers.JacksonXmlMini.class));
 		}
 
 	}

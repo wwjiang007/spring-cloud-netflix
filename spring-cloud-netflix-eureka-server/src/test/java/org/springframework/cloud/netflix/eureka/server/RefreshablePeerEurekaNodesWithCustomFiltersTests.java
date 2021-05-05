@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 the original author or authors.
+ * Copyright 2013-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,11 +42,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Yuxin Bai
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(
-		classes = RefreshablePeerEurekaNodesWithCustomFiltersTests.Application.class,
-		webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-		value = { "spring.application.name=eureka", "server.contextPath=/context",
-				"management.security.enabled=false" })
+@SpringBootTest(classes = RefreshablePeerEurekaNodesWithCustomFiltersTests.Application.class,
+		webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, value = { "spring.application.name=eureka",
+				"server.contextPath=/context", "management.security.enabled=false" })
 public class RefreshablePeerEurekaNodesWithCustomFiltersTests {
 
 	@Autowired
@@ -55,20 +53,14 @@ public class RefreshablePeerEurekaNodesWithCustomFiltersTests {
 	@Test
 	public void testCustomPeerNodesShouldTakePrecedenceOverDefault() {
 		assertThat(peerEurekaNodes instanceof RefreshablePeerEurekaNodes)
-				.as("PeerEurekaNodes should be an instance of RefreshablePeerEurekaNodes")
-				.isTrue();
+				.as("PeerEurekaNodes should be an instance of RefreshablePeerEurekaNodes").isTrue();
 
-		ReplicationClientAdditionalFilters filters = getField(
-				RefreshablePeerEurekaNodes.class,
-				(RefreshablePeerEurekaNodes) peerEurekaNodes,
-				"replicationClientAdditionalFilters");
-		assertThat(filters.getFilters()).as(
-				"PeerEurekaNodes'should have only one filter set on replicationClientAdditionalFilters")
-				.hasSize(1);
-		assertThat(filters.getFilters().iterator()
-				.next() instanceof Application.CustomClientFilter).as(
-						"The type of the filter should be CustomClientFilter as user declared so")
-						.isTrue();
+		ReplicationClientAdditionalFilters filters = getField(RefreshablePeerEurekaNodes.class,
+				(RefreshablePeerEurekaNodes) peerEurekaNodes, "replicationClientAdditionalFilters");
+		assertThat(filters.getFilters())
+				.as("PeerEurekaNodes'should have only one filter set on replicationClientAdditionalFilters").hasSize(1);
+		assertThat(filters.getFilters().iterator().next() instanceof Application.CustomClientFilter)
+				.as("The type of the filter should be CustomClientFilter as user declared so").isTrue();
 	}
 
 	private static <T, R> R getField(Class<T> clazz, T target, String fieldName) {
@@ -79,15 +71,14 @@ public class RefreshablePeerEurekaNodesWithCustomFiltersTests {
 		return value;
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableAutoConfiguration
 	@EnableEurekaServer
 	protected static class Application {
 
 		@Bean
 		public ReplicationClientAdditionalFilters customFilters() {
-			return new ReplicationClientAdditionalFilters(
-					Collections.singletonList(new CustomClientFilter()));
+			return new ReplicationClientAdditionalFilters(Collections.singletonList(new CustomClientFilter()));
 		}
 
 		protected class CustomClientFilter extends ClientFilter {

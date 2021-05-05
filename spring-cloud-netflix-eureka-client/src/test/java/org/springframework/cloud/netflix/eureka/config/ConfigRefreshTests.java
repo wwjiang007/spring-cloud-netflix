@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 the original author or authors.
+ * Copyright 2013-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,8 +35,7 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
  * @author Ryan Baxter
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = RANDOM_PORT,
-		classes = RefreshEurekaSampleApplication.class)
+@SpringBootTest(webEnvironment = RANDOM_PORT, classes = RefreshEurekaSampleApplication.class)
 public class ConfigRefreshTests {
 
 	@Autowired
@@ -48,12 +47,10 @@ public class ConfigRefreshTests {
 
 	@Test
 	// This test is used to verify that getApplications is called the correct number of
-	// times
-	// when a refresh event is fired. The getApplications call in
+	// times when a refresh event is fired. The getApplications call in
 	// EurekaClientConfigurationRefresher.onApplicationEvent
 	// ensures that the EurekaClient bean is recreated after a refresh event and that we
-	// reregister the client with
-	// the server
+	// reregister the client with the server
 	public void verifyGetApplications() {
 		if (publisher != null) {
 			publisher.publishEvent(new RefreshScopeRefreshedEvent());
